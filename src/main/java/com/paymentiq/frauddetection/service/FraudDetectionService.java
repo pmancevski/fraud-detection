@@ -19,15 +19,20 @@ public class FraudDetectionService {
 
     private final RuleEngine ruleEngine;
     private final AlertProducer alertProducer;
+
     private final SnowTransactionService snowTransactionService;
     private final SnowAlertService snowAlertService;
 
+    private final OpenSearchService openSearchService;
+
     public FraudDetectionService(RuleEngine ruleEngine, AlertProducer alertProducer,
-                                 SnowTransactionService snowTransactionService, SnowAlertService snowAlertService) {
+                                 SnowTransactionService snowTransactionService, SnowAlertService snowAlertService,
+                                 OpenSearchService openSearchService) {
         this.ruleEngine = ruleEngine;
         this.alertProducer = alertProducer;
         this.snowTransactionService = snowTransactionService;
         this.snowAlertService = snowAlertService;
+        this.openSearchService = openSearchService;
     }
 
     public void processTransaction(Transaction transaction) {
@@ -42,8 +47,11 @@ public class FraudDetectionService {
 
             FraudAlert alert = createAlert(transaction, triggeredRules);
             alertProducer.sendAlert(alert);
+
             // save to snowflake fraud table
             snowAlertService.saveAlert(alert);
+
+            openSearchService.indexAlert(alert);
             log.warn("Fraud alert sent for transaction: {}", transaction.getTransactionId());
 
         } else {
